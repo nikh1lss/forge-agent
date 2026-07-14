@@ -12,4 +12,4 @@ plugins {
 }
 
 rootProject.name = "forge-agent"
-include("app")
+include("agent")

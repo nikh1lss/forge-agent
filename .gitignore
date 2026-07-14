@@ -8,5 +8,7 @@ build
 .kotlin
 
 # Ignore eclipse jdlts files
+bin/
 .settings/
 .project
+.classpath
