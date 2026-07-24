@@ -1,4 +1,4 @@
-package forge;
+package ns.forge;
 
 public class Main {
     public static void main(String[] args) {

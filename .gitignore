@@ -12,3 +12,6 @@ bin/
 .settings/
 .project
 .classpath
+
+# Ignore keys
+.env
