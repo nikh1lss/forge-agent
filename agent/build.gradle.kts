@@ -16,6 +16,11 @@ dependencies {
     // This dependency is used by the application.
     implementation(libs.guava)
     implementation("com.anthropic:anthropic-java:2.51.0")
+    implementation("io.github.cdimascio:dotenv-java:3.2.0")
+}
+
+tasks.named<JavaExec>("run") {
+    workingDir = rootProject.projectDir
 }
 
 testing {
