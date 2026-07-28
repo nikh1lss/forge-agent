@@ -13,6 +13,9 @@ public class Main {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String apiKey = dotenv.get("ANTHROPIC_API_KEY");
 
+        // don't make calls just yet
+        apiKey = null;
+
         if (apiKey == null || apiKey.isBlank()) {
             System.err.println("claude API not found");
             System.exit(1);
@@ -23,7 +26,7 @@ public class Main {
         MessageCreateParams params =
                 MessageCreateParams.builder()
                         .maxTokens(1024L)
-                        .addUserMessage("Hello, Claude")
+                        .addUserMessage("Hello, Claude, how are you today?")
                         .model(Model.CLAUDE_HAIKU_4_5)
                         .build();
 
