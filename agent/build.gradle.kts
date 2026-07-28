@@ -21,6 +21,7 @@ dependencies {
 
 tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
+    standardInput = System.`in`
 }
 
 testing {
