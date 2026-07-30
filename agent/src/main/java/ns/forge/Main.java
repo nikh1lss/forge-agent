@@ -36,7 +36,7 @@ public class Main {
 
         List<ForgeTool> tools = List.of(new ReadFileTool());
 
-        ToolRegistry reg = new ToolRegistry(tools);
+        ToolRegistry reg = new ToolRegistry(List.of(new ReadFileTool()));
 
         Scanner scanner = new Scanner(System.in);
 

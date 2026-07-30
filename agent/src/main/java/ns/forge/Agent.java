@@ -6,6 +6,8 @@ import com.anthropic.models.messages.*;
 import ns.forge.tools.ForgeTool;
 import ns.forge.tools.ToolRegistry;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -15,6 +17,7 @@ public final class Agent {
     private static final String ANSI_BLUE = "\u001b[94m";
     private static final String ANSI_YELLOW = "\u001b[93m";
     private static final String ANSI_RESET = "\u001b[0m";
+    private static final String ANSI_GREEN = "\u001b[92m";
 
     private final AnthropicClient client;
     private final Supplier<Optional<String>> userInput;
@@ -38,18 +41,24 @@ public final class Agent {
 
         System.out.println("Chat with forge (<C-c> to quit)\n");
 
-        while (true) {
-            System.out.print(ANSI_BLUE + "You" + ANSI_RESET + ": ");
-            Optional<String> line = userInput.get();
-            if (line.isEmpty()) {
-                break;
-            }
+        boolean readUser = true;
 
-            conversation.addUserText(line.get());
+        while (true) {
+            if (readUser) {
+                System.out.print(ANSI_BLUE + "You" + ANSI_RESET + ": ");
+
+                Optional<String> line = userInput.get();
+                if (line.isEmpty()) {
+                    break;
+                }
+
+                conversation.addUserText(line.get());
+            }
 
             Message response = runInference(conversation);
             conversation.addAssistantResponse(response);
 
+            List<ContentBlockParam> toolResults = new ArrayList<>();
             for (ContentBlock block : response.content()) {
                 block.text()
                         .ifPresent(
@@ -61,6 +70,15 @@ public final class Agent {
                                                         + ": "
                                                         + text.text()
                                                         + "\n"));
+
+                block.toolUse().ifPresent(toolUse -> toolResults.add(executeTool(toolUse)));
+            }
+
+            if (toolResults.isEmpty()) {
+                readUser = true;
+            } else {
+                conversation.addToolResults(toolResults);
+                readUser = false;
             }
         }
     }
@@ -78,5 +96,40 @@ public final class Agent {
         }
 
         return client.messages().create(builder.build());
+    }
+
+    /** Looks up and executes a tool; failures become error tool-results. */
+    private ContentBlockParam executeTool(ToolUseBlock toolUse) {
+        System.out.println(
+                ANSI_GREEN
+                        + "tool"
+                        + ANSI_RESET
+                        + ": "
+                        + toolUse.name()
+                        + "("
+                        + toolUse._input()
+                        + ")");
+
+        Optional<ForgeTool> tool = tools.find(toolUse.name());
+
+        if (tool.isEmpty()) {
+            return toolResult(toolUse.id(), "tool not found: " + toolUse.name(), true);
+        }
+
+        try {
+            return toolResult(toolUse.id(), tool.get().execute(toolUse), false);
+        } catch (Exception e) {
+            String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            return toolResult(toolUse.id(), msg, true);
+        }
+    }
+
+    private static ContentBlockParam toolResult(String toolUseId, String content, boolean isError) {
+        return ContentBlockParam.ofToolResult(
+                ToolResultBlockParam.builder()
+                        .toolUseId(toolUseId)
+                        .content(content)
+                        .isError(isError)
+                        .build());
     }
 }
