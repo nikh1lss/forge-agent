@@ -3,6 +3,8 @@ package ns.forge;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.models.messages.*;
 
+import ns.forge.tools.ToolRegistry;
+
 import java.util.Optional;
 import java.util.function.Supplier;
 

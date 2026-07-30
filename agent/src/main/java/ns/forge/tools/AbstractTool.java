@@ -2,6 +2,14 @@ package ns.forge.tools;
 
 import com.anthropic.models.messages.ToolUseBlock;
 
+/**
+ * Base class for tools with a typed input.
+ *
+ * <p>Handles the JSON-to-POJO parsing of the model's tool input so that concrete tools only
+ * implement {@link #run(Object)} against their own input type. Generics never leak past this class.
+ *
+ * @param <T> the annotated input POJO for this tool
+ */
 public abstract class AbstractTool<T> implements ForgeTool {
     private final Class<T> inputClass;
 

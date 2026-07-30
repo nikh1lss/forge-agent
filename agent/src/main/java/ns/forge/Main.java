@@ -6,6 +6,8 @@ import com.anthropic.models.messages.Tool;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import ns.forge.tools.ToolRegistry;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

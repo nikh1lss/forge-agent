@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/*
+ * Reads the contents of a file at a given relative path
+ */
 public final class ReadFileTool extends AbstractTool<ReadFileTool.Input> {
     @JsonTypeName("read_file")
     @JsonClassDescription(
