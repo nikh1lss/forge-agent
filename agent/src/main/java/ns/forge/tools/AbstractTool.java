@@ -1,4 +1,4 @@
-package ns.forge;
+package ns.forge.tools;
 
 import com.anthropic.models.messages.ToolUseBlock;
 

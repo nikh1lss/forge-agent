@@ -1,4 +1,4 @@
-package ns.forge;
+package ns.forge.tools;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
