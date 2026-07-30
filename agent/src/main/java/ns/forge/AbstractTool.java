@@ -2,7 +2,7 @@ package ns.forge;
 
 import com.anthropic.models.messages.ToolUseBlock;
 
-public abstract class AbstractTool<T> implements Tool {
+public abstract class AbstractTool<T> implements ForgeTool {
     private final Class<T> inputClass;
 
     protected AbstractTool(Class<T> inputClass) {

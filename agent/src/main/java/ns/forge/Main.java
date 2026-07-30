@@ -2,9 +2,12 @@ package ns.forge;
 
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.Tool;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
@@ -20,6 +23,10 @@ public class Main {
 
         AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
 
+        List<Tool> tools = new ArrayList<>();
+
+        ToolRegistry reg = new ToolRegistry(tools);
+
         Scanner scanner = new Scanner(System.in);
 
         Agent agent =
@@ -29,7 +36,8 @@ public class Main {
                                 scanner.hasNextLine()
                                         ? Optional.of(scanner.nextLine())
                                         : Optional.empty(),
-                        AgentConfig.defaults());
+                        AgentConfig.defaults(),
+                        reg);
         agent.run();
         scanner.close();
     }

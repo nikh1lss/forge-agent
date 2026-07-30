@@ -16,9 +16,93 @@ public final class Conversation {
         messages.add(MessageParam.builder().role(MessageParam.Role.USER).content(text).build());
     }
 
+    public void addToolResults(List<ContentBlockParam> toolResults) {
+        messages.add(
+                MessageParam.builder()
+                        .role(MessageParam.Role.USER)
+                        .contentOfBlockParams(toolResults)
+                        .build());
+    }
+
     public void addAssistantResponse(Message response) {
         List<ContentBlockParam> blocks = new ArrayList<>();
+
         for (ContentBlock block : response.content()) {
+            block.accept(
+                    new ContentBlock.Visitor<Void>() {
+                        @Override
+                        public Void visitText(TextBlock text) {
+                            blocks.add(
+                                    ContentBlockParam.ofText(
+                                            TextBlockParam.builder().text(text.text()).build()));
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitToolUse(ToolUseBlock toolUse) {
+                            blocks.add(
+                                    ContentBlockParam.ofToolUse(
+                                            ToolUseBlockParam.builder()
+                                                    .id(toolUse.id())
+                                                    .name(toolUse.name())
+                                                    .input(toolUse._input())
+                                                    .build()));
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitThinking(ThinkingBlock thinking) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitRedactedThinking(RedactedThinkingBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitWebSearchToolResult(WebSearchToolResultBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitServerToolUse(ServerToolUseBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitToolSearchToolResult(ToolSearchToolResultBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitCodeExecutionToolResult(CodeExecutionToolResultBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitWebFetchToolResult(WebFetchToolResultBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitContainerUpload(ContainerUploadBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitBashCodeExecutionToolResult(
+                                BashCodeExecutionToolResultBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitTextEditorCodeExecutionToolResult(
+                                TextEditorCodeExecutionToolResultBlock r) {
+                            return null;
+                        }
+                    });
+
             block.text()
                     .ifPresent(
                             text ->

@@ -1,5 +1,7 @@
 package ns.forge;
 
+import com.anthropic.models.messages.Tool;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

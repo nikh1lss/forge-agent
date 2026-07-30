@@ -17,10 +17,17 @@ public final class Agent {
     private final Supplier<Optional<String>> userInput;
     private final AgentConfig config;
 
-    public Agent(AnthropicClient client, Supplier<Optional<String>> userInput, AgentConfig config) {
+    private final ToolRegistry tools;
+
+    public Agent(
+            AnthropicClient client,
+            Supplier<Optional<String>> userInput,
+            AgentConfig config,
+            ToolRegistry tools) {
         this.client = client;
         this.userInput = userInput;
         this.config = config;
+        this.tools = tools;
     }
 
     public void run() {
@@ -56,13 +63,17 @@ public final class Agent {
     }
 
     private Message runInference(Conversation conversation) {
-        return client.messages()
-                .create(
-                        MessageCreateParams.builder()
-                                .model(config.model())
-                                .maxTokens(config.maxTokens())
-                                .system(config.systemPrompt())
-                                .messages(conversation.messages())
-                                .build());
+        MessageCreateParams.Builder builder =
+                MessageCreateParams.builder()
+                        .model(config.model())
+                        .maxTokens(config.maxTokens())
+                        .system(config.systemPrompt())
+                        .messages(conversation.messages());
+
+        // for (Tool tool : tools.all()) {
+        //     builder.addTool(tool.inputClass());
+        // }
+
+        return client.messages().create(builder.build());
     }
 }
