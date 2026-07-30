@@ -5,7 +5,9 @@ import com.anthropic.models.messages.*;
 import java.util.ArrayList;
 import java.util.List;
 
+/** The growing message history sent to the model on every turn. */
 public final class Conversation {
+
     private final List<MessageParam> messages = new ArrayList<>();
 
     public List<MessageParam> messages() {
@@ -24,6 +26,7 @@ public final class Conversation {
                         .build());
     }
 
+    /* Converts the model's response into an assistant turn and appends it */
     public void addAssistantResponse(Message response) {
         List<ContentBlockParam> blocks = new ArrayList<>();
 

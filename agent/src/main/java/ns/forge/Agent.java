@@ -3,6 +3,7 @@ package ns.forge;
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.models.messages.*;
 
+import ns.forge.tools.ForgeTool;
 import ns.forge.tools.ToolRegistry;
 
 import java.util.Optional;
@@ -72,9 +73,9 @@ public final class Agent {
                         .system(config.systemPrompt())
                         .messages(conversation.messages());
 
-        // for (Tool tool : tools.all()) {
-        //     builder.addTool(tool.inputClass());
-        // }
+        for (ForgeTool tool : tools.all()) {
+            builder.addTool(tool.spec());
+        }
 
         return client.messages().create(builder.build());
     }

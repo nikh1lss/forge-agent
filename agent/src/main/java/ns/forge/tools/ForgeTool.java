@@ -1,19 +1,19 @@
 package ns.forge.tools;
 
-// import com.anthropic.models.messages.Tool;
+import com.anthropic.models.messages.Tool;
 import com.anthropic.models.messages.ToolUseBlock;
 
 /* A tool that Claude can invoke
  */
 public interface ForgeTool {
-    /** Tool name as exposed to the model */
+    /** Tool name as exposed to the model. Must match {@link #spec()}'s name. */
     String name();
 
     /**
-     * The annotated POJO whose fields define the tool's JSON input schema. The SDK derives the
-     * schema from Jackson annotations on this class.
+     * The SDK tool definition sent to the model: name, description, and input schema. The agent
+     * passes this to {@code MessageCreateParams.Builder.addTool}.
      */
-    Class<?> inputClass();
+    Tool spec();
 
     /**
      * Parse the tool-use block's input and run the tool.
@@ -23,6 +23,4 @@ public interface ForgeTool {
      *     model can react to it
      */
     String execute(ToolUseBlock toolUse) throws Exception;
-
-    // Tool spec(); // SDK tool definition
 }

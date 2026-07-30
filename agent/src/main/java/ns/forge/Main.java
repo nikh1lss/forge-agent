@@ -2,17 +2,26 @@ package ns.forge;
 
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.Tool;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import ns.forge.tools.ForgeTool;
+import ns.forge.tools.ReadFileTool;
 import ns.forge.tools.ToolRegistry;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
+/**
+ * Entry point for forge agent
+ *
+ * <p>Set the {@code ANTHROPIC_API_KEY} environment variable before running:
+ *
+ * <pre>{@code
+ * ./gradlew run --console=plain
+ * }</pre>
+ */
 public class Main {
     public static void main(String[] args) {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
@@ -25,7 +34,7 @@ public class Main {
 
         AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
 
-        List<Tool> tools = new ArrayList<>();
+        List<ForgeTool> tools = List.of(new ReadFileTool());
 
         ToolRegistry reg = new ToolRegistry(tools);
 

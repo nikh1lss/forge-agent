@@ -2,6 +2,7 @@ package ns.forge;
 
 import com.anthropic.models.messages.Model;
 
+/** Configuration for forge */
 public record AgentConfig(
         Model model,
         long maxTokens,

@@ -8,18 +8,13 @@ import com.anthropic.models.messages.ToolUseBlock;
  * <p>Handles the JSON-to-POJO parsing of the model's tool input so that concrete tools only
  * implement {@link #run(Object)} against their own input type. Generics never leak past this class.
  *
- * @param <T> the annotated input POJO for this tool
+ * @param <T> the input POJO for this tool
  */
 public abstract class AbstractTool<T> implements ForgeTool {
     private final Class<T> inputClass;
 
     protected AbstractTool(Class<T> inputClass) {
         this.inputClass = inputClass;
-    }
-
-    @Override
-    public final Class<T> inputClass() {
-        return inputClass;
     }
 
     @Override
