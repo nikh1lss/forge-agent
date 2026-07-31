@@ -65,7 +65,7 @@ public final class Agent {
                                 text ->
                                         System.out.println(
                                                 ANSI_YELLOW
-                                                        + "\nClaude"
+                                                        + "\nForge"
                                                         + ANSI_RESET
                                                         + ": "
                                                         + text.text()
