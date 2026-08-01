@@ -54,16 +54,6 @@ public final class Conversation {
                         }
 
                         @Override
-                        public Void visitThinking(ThinkingBlock thinking) {
-                            return null;
-                        }
-
-                        @Override
-                        public Void visitRedactedThinking(RedactedThinkingBlock r) {
-                            return null;
-                        }
-
-                        @Override
                         public Void visitWebSearchToolResult(WebSearchToolResultBlock r) {
                             return null;
                         }
@@ -102,6 +92,27 @@ public final class Conversation {
                         @Override
                         public Void visitTextEditorCodeExecutionToolResult(
                                 TextEditorCodeExecutionToolResultBlock r) {
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitThinking(ThinkingBlock thinking) {
+                            blocks.add(
+                                    ContentBlockParam.ofThinking(
+                                            ThinkingBlockParam.builder()
+                                                    .thinking(thinking.thinking())
+                                                    .signature(thinking.signature())
+                                                    .build()));
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitRedactedThinking(RedactedThinkingBlock redacted) {
+                            blocks.add(
+                                    ContentBlockParam.ofRedactedThinking(
+                                            RedactedThinkingBlockParam.builder()
+                                                    .data(redacted.data())
+                                                    .build()));
                             return null;
                         }
                     });
