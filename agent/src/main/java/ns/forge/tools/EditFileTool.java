@@ -119,11 +119,28 @@ public final class EditFileTool extends AbstractTool<EditFileTool.Input> {
         return "OK";
     }
 
-    private static String createNewFile(Path filepath, String newStr) {
-        return null;
+    private static String createNewFile(Path filePath, String content) throws IOException {
+        Path parent = filePath.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
+        Files.writeString(filePath, content);
+        return "Created file " + filePath;
     }
 
     private static int countOccurrences(String content, String oldStr) {
-        return 0;
+        if (content.isEmpty()) {
+            return 0;
+        }
+
+        int count = 0, index = 0, length = oldStr.length();
+
+        while ((index = content.indexOf(oldStr, index)) != -1) {
+            ++count;
+            index += length;
+        }
+
+        return count;
     }
 }
