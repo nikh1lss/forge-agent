@@ -8,7 +8,7 @@ public record AgentConfig(
         long maxTokens,
         String systemPrompt,
         int maxRetries,
-        long initialBackoffMillis0) {
+        long initialBackoffMillis) {
 
     private static final String DEFAULT_SYSTEM_PROMPT =
             """

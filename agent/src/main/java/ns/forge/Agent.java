@@ -1,6 +1,9 @@
 package ns.forge;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.core.RequestOptions;
+import com.anthropic.errors.AnthropicIoException;
+import com.anthropic.errors.AnthropicServiceException;
 import com.anthropic.models.messages.*;
 
 import ns.forge.tools.ForgeTool;
@@ -55,7 +58,7 @@ public final class Agent {
                 conversation.addUserText(line.get());
             }
 
-            Message response = runInference(conversation);
+            Message response = runInferenceWithRetry(conversation);
             conversation.addAssistantResponse(response);
 
             List<ContentBlockParam> toolResults = new ArrayList<>();
@@ -81,21 +84,6 @@ public final class Agent {
                 readUser = false;
             }
         }
-    }
-
-    private Message runInference(Conversation conversation) {
-        MessageCreateParams.Builder builder =
-                MessageCreateParams.builder()
-                        .model(config.model())
-                        .maxTokens(config.maxTokens())
-                        .system(config.systemPrompt())
-                        .messages(conversation.messages());
-
-        for (ForgeTool tool : tools.all()) {
-            builder.addTool(tool.spec());
-        }
-
-        return client.messages().create(builder.build());
     }
 
     /** Looks up and executes a tool; failures become error tool-results. */
@@ -131,5 +119,66 @@ public final class Agent {
                         .content(content)
                         .isError(isError)
                         .build());
+    }
+
+    private MessageCreateParams buildParams(Conversation conversation) {
+        MessageCreateParams.Builder builder =
+                MessageCreateParams.builder()
+                        .model(config.model())
+                        .maxTokens(config.maxTokens())
+                        .system(config.systemPrompt())
+                        .messages(conversation.messages());
+
+        for (ForgeTool tool : tools.all()) {
+            builder.addTool(tool.spec());
+        }
+
+        return builder.build();
+    }
+
+    /**
+     * Calls the API, retrying on transient failures (overloaded, rate limit, network errors) with
+     * exponential backoff. Non-retryable errors — like an invalid API key — are rethrown
+     * immediately.
+     */
+    private Message runInferenceWithRetry(Conversation conversation) {
+        MessageCreateParams params = buildParams(conversation);
+
+        long backoff = config.initialBackoffMillis();
+        RuntimeException last = null;
+
+        for (int attempt = 0; attempt <= config.maxRetries(); ++attempt) {
+            try {
+                return client.messages().create(params, RequestOptions.none());
+            } catch (AnthropicServiceException e) {
+                if (!isRetryable(e.statusCode()) || attempt == config.maxRetries()) {
+                    throw e;
+                }
+
+                last = e;
+            } catch (AnthropicIoException e) {
+                if (attempt == config.maxRetries()) {
+                    throw e;
+                }
+                last = e;
+            }
+            System.out.println("retry: transient API error, waiting " + backoff + "ms...");
+            sleep(backoff);
+            backoff *= 2;
+        }
+
+        throw last;
+    }
+
+    private static boolean isRetryable(int statusCode) {
+        return statusCode == 429 || statusCode == 529 || statusCode >= 500;
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
