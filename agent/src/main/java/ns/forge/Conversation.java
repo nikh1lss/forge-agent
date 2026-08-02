@@ -116,15 +116,6 @@ public final class Conversation {
                             return null;
                         }
                     });
-
-            block.text()
-                    .ifPresent(
-                            text ->
-                                    blocks.add(
-                                            ContentBlockParam.ofText(
-                                                    TextBlockParam.builder()
-                                                            .text(text.text())
-                                                            .build())));
         }
         messages.add(
                 MessageParam.builder()

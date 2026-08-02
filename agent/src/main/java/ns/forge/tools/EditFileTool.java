@@ -6,6 +6,7 @@ import com.anthropic.models.messages.Tool;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -69,6 +70,7 @@ public final class EditFileTool extends AbstractTool<EditFileTool.Input> {
                                                                         "Text to replace old_str"
                                                                                 + " with")))
                                                 .build())
+                                .required(List.of("path", "old_str", "new_str"))
                                 .build())
                 .build();
     }
