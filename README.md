@@ -1,5 +1,7 @@
 # forge-agent
 
+[![CI](https://github.com/nikh1lss/forge-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/nikh1lss/forge-agent/actions/workflows/ci.yml)
+
 A custom AI coding agent implemented in Java, built from scratch.
 
 `forge` is a terminal chat loop implemented with the Anthropic Messages API. It gives Claude a
@@ -45,6 +47,18 @@ Other useful tasks:
 
 Tool failures aren't fatal: the exception message is returned to the model as an error
 tool-result, so it can read what went wrong and try a different approach.
+
+## Tests
+
+```bash
+./gradlew test
+```
+
+The suite drives each tool through `ForgeTool.execute(ToolUseBlock)` — the same entry point the
+agent uses — rather than calling its internals, so the JSON-to-POJO binding is covered along with
+the behavior. It pins the parts that are easy to get subtly wrong: `edit_file`'s uniqueness check
+and non-overlapping match counting, `list_files`' depth limit, exclusion rules and truncation, and
+`AbstractTool`'s tolerance of unknown fields from the model. CI runs it on every push and PR.
 
 ## How it works
 

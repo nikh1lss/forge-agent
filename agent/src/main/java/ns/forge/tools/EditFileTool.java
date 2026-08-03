@@ -94,10 +94,19 @@ public final class EditFileTool extends AbstractTool<EditFileTool.Input> {
 
         if (!Files.exists(filePath)) {
             if (!OldStr.isEmpty()) {
-                throw new IllegalArgumentException("files does not exist at + " + input.path);
+                throw new IllegalArgumentException("file does not exist at " + input.path);
             }
 
             return createNewFile(filePath, NewStr);
+        }
+
+        // An empty old_str only means "create this file". On a file that already exists it has no
+        // meaningful match — and countOccurrences would spin forever on a zero-length needle.
+        if (OldStr.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "file already exists at "
+                            + input.path
+                            + "; old_str is required to edit an existing file");
         }
 
         String content = Files.readString(filePath);
