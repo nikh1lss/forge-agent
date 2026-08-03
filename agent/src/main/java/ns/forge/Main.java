@@ -5,6 +5,7 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import ns.forge.tools.BashTool;
 import ns.forge.tools.EditFileTool;
 import ns.forge.tools.ForgeTool;
 import ns.forge.tools.ListFilesTool;
@@ -37,7 +38,11 @@ public class Main {
         AnthropicClient client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
 
         List<ForgeTool> tools =
-                List.of(new ReadFileTool(), new ListFilesTool(), new EditFileTool());
+                List.of(
+                        new ReadFileTool(),
+                        new ListFilesTool(),
+                        new EditFileTool(),
+                        new BashTool());
         ToolRegistry reg = new ToolRegistry(tools);
 
         Scanner scanner = new Scanner(System.in);
