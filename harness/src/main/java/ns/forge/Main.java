@@ -17,7 +17,7 @@ import java.util.Optional;
 import java.util.Scanner;
 
 /**
- * Entry point for forge agent
+ * Entry point for forge harness
  *
  * <p>Set the {@code ANTHROPIC_API_KEY} environment variable before running:
  *
@@ -47,16 +47,16 @@ public class Main {
 
         Scanner scanner = new Scanner(System.in);
 
-        Agent agent =
-                new Agent(
+        Harness harness =
+                new Harness(
                         client,
                         () ->
                                 scanner.hasNextLine()
                                         ? Optional.of(scanner.nextLine())
                                         : Optional.empty(),
-                        AgentConfig.defaults(),
+                        HarnessConfig.defaults(),
                         reg);
-        agent.run();
+        harness.run();
         scanner.close();
     }
 }

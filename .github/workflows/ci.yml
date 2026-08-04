@@ -38,5 +38,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-report
-          path: agent/build/reports/tests/test
+          path: harness/build/reports/tests/test
           retention-days: 7

@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-public final class Agent {
+public final class Harness {
 
     // make text pretty
     private static final String ANSI_BLUE = "\u001b[94m";
@@ -24,14 +24,14 @@ public final class Agent {
 
     private final AnthropicClient client;
     private final Supplier<Optional<String>> userInput;
-    private final AgentConfig config;
+    private final HarnessConfig config;
 
     private final ToolRegistry tools;
 
-    public Agent(
+    public Harness(
             AnthropicClient client,
             Supplier<Optional<String>> userInput,
-            AgentConfig config,
+            HarnessConfig config,
             ToolRegistry tools) {
         this.client = client;
         this.userInput = userInput;

@@ -13,12 +13,12 @@ WORKDIR /src
 # often than sources.
 COPY gradlew gradle.properties settings.gradle.kts ./
 COPY gradle ./gradle
-COPY agent/build.gradle.kts ./agent/
+COPY harness/build.gradle.kts ./harness/
 
 RUN ./gradlew --no-daemon --console=plain \
-        :agent:dependencies --configuration runtimeClasspath > /dev/null
+        :harness:dependencies --configuration runtimeClasspath > /dev/null
 
-COPY agent/src ./agent/src
+COPY harness/src ./harness/src
 
 RUN ./gradlew --no-daemon --console=plain installDist
 
@@ -45,11 +45,11 @@ RUN if id -u 1000 > /dev/null 2>&1; then userdel -r "$(id -nu 1000)" || true; fi
     && mkdir -p /home/forge/.gradle \
     && chmod 0777 /home/forge /home/forge/.gradle
 
-COPY --from=build /src/agent/build/install/agent /opt/forge
-RUN ln -s /opt/forge/bin/agent /usr/local/bin/forge
+COPY --from=build /src/harness/build/install/harness /opt/forge
+RUN ln -s /opt/forge/bin/harness /usr/local/bin/forge
 
 ENV HOME=/home/forge
 USER forge
 WORKDIR /work
 
-ENTRYPOINT ["/opt/forge/bin/agent"]
+ENTRYPOINT ["/opt/forge/bin/harness"]

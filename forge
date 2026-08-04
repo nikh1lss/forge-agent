@@ -2,12 +2,12 @@
 #
 # Run forge against the current directory inside a container.
 #
-#   ./forge                 # from any project you want the agent to work on
+#   ./forge                 # from any project you want forge to work on
 #
 # Environment:
 #   ANTHROPIC_API_KEY   passed straight through; falls back to FORGE_ENV_FILE,
 #                       then to a .env in the current directory
-#   FORGE_IMAGE         image to run                    (default forge-agent:latest)
+#   FORGE_IMAGE         image to run                    (default forge-harness:latest)
 #   FORGE_NETWORK       docker network mode             (default bridge)
 #                       set to "none" to cut off outbound traffic — this also
 #                       breaks any build that resolves dependencies
@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-image="${FORGE_IMAGE:-forge-agent:latest}"
+image="${FORGE_IMAGE:-forge-harness:latest}"
 
 args=(
     --rm

@@ -3,7 +3,7 @@ package ns.forge;
 import com.anthropic.models.messages.Model;
 
 /** Configuration for forge */
-public record AgentConfig(
+public record HarnessConfig(
         Model model,
         long maxTokens,
         String systemPrompt,
@@ -22,7 +22,7 @@ public record AgentConfig(
             - If a tool call fails, read the error, adjust, and try a different approach.
             """;
 
-    public static AgentConfig defaults() {
-        return new AgentConfig(Model.CLAUDE_HAIKU_4_5, 4096L, DEFAULT_SYSTEM_PROMPT, 3, 1_000L);
+    public static HarnessConfig defaults() {
+        return new HarnessConfig(Model.CLAUDE_HAIKU_4_5, 4096L, DEFAULT_SYSTEM_PROMPT, 3, 1_000L);
     }
 }

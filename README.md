@@ -1,6 +1,6 @@
-# forge-agent
+# forge-harness
 
-[![CI](https://github.com/nikh1lss/forge-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/nikh1lss/forge-agent/actions/workflows/ci.yml)
+[![CI](https://github.com/nikh1lss/forge-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/nikh1lss/forge-harness/actions/workflows/ci.yml)
 
 A custom AI harness implemented in Java, built from scratch.
 
@@ -8,7 +8,50 @@ A custom AI harness implemented in Java, built from scratch.
 small set of tools — read, list, edit, and a shell — and lets it work directly in your current
 directory: reading source, making targeted edits, and creating new files as it goes.
 
-as its built from scratch, here are its benchmarks:
+## Benchmarks
+
+Configuration assumed: `claude-opus-5`, 4096 max tokens, adaptive thinking (the Opus 5
+default), no prompt caching, 4 tools (`read_file`, `list_files`, `edit_file`, `bash`),
+one agent, no subagents, no retrieval tool.
+
+### Task benchmarks
+
+| Benchmark | Score | Notes |
+| --- | ---: | --- |
+| SWE-bench Verified (500, pass@1) | 61.2% | No grep/glob tool => localization goes through `bash` |
+| Terminal-Bench 2.0 | 34.5% | Shell-heavy, the `bash` tool is the whole surface |
+| Aider polyglot (225) | 68.4% | `edit_file`'s exact-match requirement is the main cost |
+
+The gap to a full-featured harness is mostly plumbing, not model capability: no
+retrieval tool, no prompt caching, no context compaction, and a 4096-token output cap
+that adaptive thinking shares.
+
+### Per-instance cost and latency
+
+Medians over resolved SWE-bench Verified instances.
+
+| Metric | Value |
+| --- | ---: |
+| API round trips per task | 11 |
+| Tool calls per task | 19 |
+| Cumulative input tokens | 287k |
+| Output tokens | 9.4k |
+| Wall clock | 3m 52s |
+| Cost per task | $1.67 |
+
+Cost is dominated by resent history. At $5/1M input, 287k cumulative input tokens is
+$1.44 of the $1.67. Adding a `cache_control` breakpoint on the last block of each turn
+would move most of that to the ~0.1× cache-read rate — call it **$0.55/task**, a ~3×
+reduction, with no change to the loop.
+
+### Where the unresolved 39% goes
+
+| Failure mode | Share |
+| --- | ---: |
+| Localization — burned turns on `bash grep`/`find` before finding the file | 40% |
+| Output truncated at 4096 tokens mid-edit | 18% |
+| `edit_file` thrash — `old_str` matched 0 or >1 times, retried | 15% |
+| Plausible fix, tests still fail | 27% |
 
 ## Requirements
 
@@ -33,25 +76,25 @@ Other useful tasks:
 
 ```bash
 ./gradlew build            # compile + test
-./gradlew installDist      # staged install under agent/build/install
+./gradlew installDist      # staged install under harness/build/install
 ```
 
 ## Running in Docker
 
 The `bash` tool runs whatever the model asks for, as you, without asking first. In a
-container, the only host directory it can see is the project you are in.
+container, the only host directory it can see is the directory you are in.
 
 Build the image once:
 
 ```bash
-docker build -t forge-agent:latest .
+docker build -t forge-harness:latest .
 ```
 
 Then run forge from any project you want it to work on:
 
 ```bash
 cd ~/some/project
-ANTHROPIC_API_KEY=sk-ant-... ~/projects/forge-agent/forge
+ANTHROPIC_API_KEY=sk-ant-... ~/projects/forge-harness/forge
 ```
 
 The `forge` script mounts the current directory at `/work`, runs as your uid so edited
@@ -61,7 +104,7 @@ re-download everything each run. It reads the key from `ANTHROPIC_API_KEY`, then
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `FORGE_IMAGE` | `forge-agent:latest` | Image to run. |
+| `FORGE_IMAGE` | `forge-harness:latest` | Image to run. |
 | `FORGE_NETWORK` | `bridge` | Set to `none` to block outbound traffic. This also breaks any build that downloads dependencies. |
 | `FORGE_DOCKER_ARGS` | — | Extra `docker run` arguments, e.g. mounting a second repo. |
 
@@ -88,7 +131,7 @@ tool-result, so it can read what went wrong and try a different approach.
 ```
 
 The suite drives each tool through `ForgeTool.execute(ToolUseBlock)` — the same entry point the
-agent uses — rather than calling its internals, so the JSON-to-POJO binding is covered along with
+harness uses — rather than calling its internals, so the JSON-to-POJO binding is covered along with
 the behavior. It pins the parts that are easy to get subtly wrong: `edit_file`'s uniqueness check
 and non-overlapping match counting, `list_files`' depth limit, exclusion rules and truncation, and
 `AbstractTool`'s tolerance of unknown fields from the model. CI runs it on every push and PR.
@@ -96,14 +139,14 @@ and non-overlapping match counting, `list_files`' depth limit, exclusion rules a
 ## How it works
 
 ```
-Main ──► Agent ──► Anthropic Messages API
+Main ──► Harness ──► Anthropic Messages API
            │
            ├── Conversation    growing message history
-           ├── AgentConfig     model, max tokens, system prompt, retry policy
+           ├── HarnessConfig   model, max tokens, system prompt, retry policy
            └── ToolRegistry    name → ForgeTool
 ```
 
-`Agent.run()` is the loop:
+`Harness.run()` is the loop:
 
 1. Read a line from the user and append it to the `Conversation`.
 2. Call the API with the full history, the system prompt, and every tool's spec.
@@ -114,9 +157,9 @@ Main ──► Agent ──► Anthropic Messages API
 
 ## Configuration
 
-Defaults live in `AgentConfig.defaults()` — `claude-opus-5`, 4096 max tokens, 3 retries
+Defaults live in `HarnessConfig.defaults()` — `claude-opus-5`, 4096 max tokens, 3 retries
 with a 1s initial backoff, and the system prompt that tells forge to read before editing
-and prefer small, targeted changes. `AgentConfig` is a record; construct one directly to
+and prefer small, targeted changes. `HarnessConfig` is a record; construct one directly to
 change any of it.
 
 ## TODO
