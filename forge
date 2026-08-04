@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+#
+# Run forge against the current directory inside a container.
+#
+#   ./forge                 # from any project you want the agent to work on
+#
+# Environment:
+#   ANTHROPIC_API_KEY   passed straight through; falls back to FORGE_ENV_FILE,
+#                       then to a .env in the current directory
+#   FORGE_IMAGE         image to run                    (default forge-agent:latest)
+#   FORGE_NETWORK       docker network mode             (default bridge)
+#                       set to "none" to cut off outbound traffic — this also
+#                       breaks any build that resolves dependencies
+#   FORGE_DOCKER_ARGS   extra args for `docker run`, e.g. mounting a second repo
+
+set -euo pipefail
+
+image="${FORGE_IMAGE:-forge-agent:latest}"
+
+args=(
+    --rm
+    --interactive
+    --volume "$PWD:/work"
+    --workdir /work
+    # Match the caller so edited files do not come back owned by root. HOME has
+    # to be set explicitly: overriding --user with a bare uid leaves the
+    # container without one, and Gradle/npm then try to cache into /.
+    --user "$(id -u):$(id -g)"
+    --env HOME=/home/forge
+    --volume forge-gradle-cache:/home/forge/.gradle
+    --network "${FORGE_NETWORK:-bridge}"
+    --security-opt no-new-privileges
+    --cap-drop ALL
+    --pids-limit 2048
+)
+
+# Only allocate a TTY when there is one to allocate: `docker run -t` fails
+# outright on a pipe, and piping a prompt in is a reasonable way to use this.
+if [[ -t 0 ]]; then
+    args+=(--tty)
+fi
+
+if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    args+=(--env "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
+elif [[ -n "${FORGE_ENV_FILE:-}" ]]; then
+    args+=(--env-file "$FORGE_ENV_FILE")
+elif [[ -f .env ]]; then
+    args+=(--env-file .env)
+else
+    echo "forge: no API key. Export ANTHROPIC_API_KEY, point FORGE_ENV_FILE at" >&2
+    echo "       an env file, or put one in ./.env" >&2
+    exit 1
+fi
+
+if [[ -n "${FORGE_DOCKER_ARGS:-}" ]]; then
+    read -ra extra_args <<< "$FORGE_DOCKER_ARGS"
+    args+=("${extra_args[@]}")
+fi
+
+exec docker run "${args[@]}" "$image" "$@"

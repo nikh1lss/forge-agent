@@ -1,0 +1,21 @@
+# Keep the build context small and keep secrets out of image layers.
+.env
+.git
+.github
+.gitattributes
+.gitignore
+
+# Build output and caches — the image builds these itself.
+**/build
+**/.gradle
+**/bin/
+.kotlin
+
+# Editor and IDE metadata.
+.settings
+.project
+.classpath
+.idea
+
+LICENSE
+README.md

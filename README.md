@@ -2,14 +2,13 @@
 
 [![CI](https://github.com/nikh1lss/forge-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/nikh1lss/forge-agent/actions/workflows/ci.yml)
 
-A custom AI coding agent implemented in Java, built from scratch.
+A custom AI harness implemented in Java, built from scratch.
 
-`forge` is a terminal chat loop implemented with the Anthropic Messages API. It gives Claude a
-small set of file tools — read, list, edit — and lets it work directly in your current
+`forge` is a CLI AI harness implemented with the Anthropic Messages API. It gives Claude a
+small set of tools — read, list, edit, and a shell — and lets it work directly in your current
 directory: reading source, making targeted edits, and creating new files as it goes.
 
-The whole thing is a few hundred lines of Java, built to show that a working code-editing
-agent is mostly just a loop, a message history, and some tool definitions.
+as its built from scratch, here are its benchmarks:
 
 ## Requirements
 
@@ -37,6 +36,39 @@ Other useful tasks:
 ./gradlew installDist      # staged install under agent/build/install
 ```
 
+## Running in Docker
+
+The `bash` tool runs whatever the model asks for, as you, without asking first. In a
+container, the only host directory it can see is the project you are in.
+
+Build the image once:
+
+```bash
+docker build -t forge-agent:latest .
+```
+
+Then run forge from any project you want it to work on:
+
+```bash
+cd ~/some/project
+ANTHROPIC_API_KEY=sk-ant-... ~/projects/forge-agent/forge
+```
+
+The `forge` script mounts the current directory at `/work`, runs as your uid so edited
+files aren't owned by root, and keeps the Gradle cache in a named volume so builds don't
+re-download everything each run. It reads the key from `ANTHROPIC_API_KEY`, then
+`FORGE_ENV_FILE`, then a `.env` in the current directory.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `FORGE_IMAGE` | `forge-agent:latest` | Image to run. |
+| `FORGE_NETWORK` | `bridge` | Set to `none` to block outbound traffic. This also breaks any build that downloads dependencies. |
+| `FORGE_DOCKER_ARGS` | — | Extra `docker run` arguments, e.g. mounting a second repo. |
+
+The image ships a full JDK 24 plus `git` and `curl` instead of a minimal JRE, since the
+point of the shell is building and testing whatever project you point it at. Other
+toolchains have to be added to the `Dockerfile`.
+
 ## Tools
 
 | Tool | Input | Behavior |
@@ -44,6 +76,7 @@ Other useful tasks:
 | `read_file` | `path` | Returns the file's contents as text. |
 | `list_files` | `path` (optional) | Walks up to 4 levels deep, returns a JSON array of entries. Skips `.git`, `.gradle`, `.idea`, `build`, `target`, `out`; truncates at 500 entries. |
 | `edit_file` | `path`, `old_str`, `new_str` | Replaces `old_str` with `new_str`. `old_str` must match exactly once. If the file doesn't exist and `old_str` is empty, creates it (with parent directories) containing `new_str`. |
+| `bash` | `command`, `timeout_ms` (optional) | Runs the command through `bash -c` and returns the exit code with combined stdout and stderr. 30s default timeout, capped at 10m; output past 30k characters is dropped from the middle so the summary at the tail survives. A non-zero exit is returned as ordinary output, not a tool error. Unsandboxed — see [Running in Docker](#running-in-docker). |
 
 Tool failures aren't fatal: the exception message is returned to the model as an error
 tool-result, so it can read what went wrong and try a different approach.
