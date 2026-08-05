@@ -4,6 +4,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import type { Item, ToolCall } from './state.js';
 
 const LOGO = [
+    "\n" +
     "███████████    ███████    ███████████     █████████  ██████████" + "\n" +
     "▒▒███▒▒▒▒▒▒█  ███▒▒▒▒▒███ ▒▒███▒▒▒▒▒███   ███▒▒▒▒▒███▒▒███▒▒▒▒▒█" + "\n" +
     " ▒███   █ ▒  ███     ▒▒███ ▒███    ▒███  ███     ▒▒▒  ▒███  █ ▒ " + "\n" +

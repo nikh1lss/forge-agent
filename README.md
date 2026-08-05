@@ -2,7 +2,15 @@
 
 [![CI](https://github.com/nikh1lss/forge-harness/actions/workflows/ci.yml/badge.svg)](https://github.com/nikh1lss/forge-harness/actions/workflows/ci.yml)
 
-A custom AI harness implemented in Java, built from scratch.
+A custom AI harness built from scratch in Java.
+
+<div align="center">
+
+<img width="1214" height="762" alt="Image" src="https://github.com/user-attachments/assets/b7ed3dee-f76a-413a-bac0-a2b2ce7717db" />
+
+</div>
+
+<br>
 
 `forge` is a CLI AI harness implemented with the Anthropic Messages API. It gives Claude a
 small set of tools — read, list, edit, and a shell — and lets it work directly in your current
@@ -57,6 +65,7 @@ reduction, with no change to the loop.
 
 - JDK 24
 - An Anthropic API key
+- Node 20+, for the TUI only
 
 ## Setup
 
@@ -79,6 +88,41 @@ Other useful tasks:
 ./gradlew installDist      # staged install under harness/build/install
 ```
 
+## TUI
+
+A React + Ink front end lives in `tui/`. The transcript scrolls above a pinned input box and
+the model's text streams in as it is generated.
+
+```bash
+cd tui
+npm install
+npm start          # builds the engine and the TUI, then runs it
+
+(or npm start --prefix tui from root)
+```
+
+`npm run dev` skips the TypeScript build and runs the sources through `tsx` instead. Either
+way forge works on **the directory you launch from**, so run it from the project you want it
+to edit — from `tui/` it will happily edit the TUI.
+
+`FORGE_DOCKER=1` runs the engine through the [`forge-cli`](#running-in-docker) script instead of
+locally, which puts the `bash` tool back in a container. It needs the image built first, and
+every Java change needs the image rebuilt before the TUI sees it.
+
+Typing while forge is working is fine, the message sits in the pipe until the loop comes
+back around for it.
+
+The TUI spawns the harness with `--jsonl` and reads events off its stdout, one JSON object per line:
+
+```
+Ink TUI ──stdin: {"type":"user","text":...}──► harness --jsonl ──► Anthropic
+        ◄──stdout: {"type":"text_delta",...}──┘
+```
+
+`ns.forge.ui.ForgeEvent` is the protocol and `tui/src/protocol.ts` mirrors it; the two have
+to change together. The same events drive `ConsoleUi`, so `./gradlew run` still prints the
+plain ANSI transcript it always did — the TUI is a second front end, not a replacement.
+
 ## Running in Docker
 
 The `bash` tool runs whatever the model asks for, as you, without asking first. In a
@@ -94,10 +138,10 @@ Then run forge from any project you want it to work on:
 
 ```bash
 cd ~/some/project
-ANTHROPIC_API_KEY=sk-ant-... ~/projects/forge-harness/forge
+ANTHROPIC_API_KEY=sk-ant-... ~/forge-harness/forge-cli
 ```
 
-The `forge` script mounts the current directory at `/work`, runs as your uid so edited
+The `forge-cli` script mounts the current directory at `/work`, runs as your uid so edited
 files aren't owned by root, and keeps the Gradle cache in a named volume so builds don't
 re-download everything each run. It reads the key from `ANTHROPIC_API_KEY`, then
 `FORGE_ENV_FILE`, then a `.env` in the current directory.
@@ -164,7 +208,9 @@ change any of it.
 
 ## TODO
 
-A possible TUI, using some leaks as a reference..
+Prompt caching on the last block of each turn — see the cost note under
+[Benchmarks](#per-instance-cost-and-latency). Tool approval prompts in the TUI; the protocol
+is one-directional today, so gating a call means a request/response round trip.
 
 ## License
 
