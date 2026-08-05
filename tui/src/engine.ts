@@ -9,7 +9,7 @@ import { parseEvent, type ForgeEvent } from './protocol.js';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const localEngine = resolve(repoRoot, 'harness/build/install/harness/bin/harness');
-const dockerEngine = resolve(repoRoot, 'forge');
+const dockerEngine = resolve(repoRoot, 'forge-cli');
 
 /**
  * Variables from the repo root's `.env`, for anything not already in the environment.
@@ -17,12 +17,12 @@ const dockerEngine = resolve(repoRoot, 'forge');
  * The harness resolves its key relative to its own working directory, and that directory is the
  * project being worked on rather than this repo — running the TUI from `tui/`, which is what the
  * README's `cd tui && npm start` does, otherwise leaves the key at the repo root unreachable. The
- * docker path benefits too: the `forge` script prefers `ANTHROPIC_API_KEY` over its own `.env`
+ * docker path benefits too: `forge-cli` prefers `ANTHROPIC_API_KEY` over its own `.env`
  * lookup, so exporting it here is enough for both.
  *
  * Deliberately not a full dotenv implementation — no interpolation, no multi-line values. This
  * reads the one file the harness would have read itself, and a real environment variable still
- * wins, which is the ordering both the harness and the `forge` script already use.
+ * wins, which is the ordering both the harness and `forge-cli` already use.
  */
 function repoEnv(): NodeJS.ProcessEnv {
   const file = resolve(repoRoot, '.env');
@@ -67,8 +67,8 @@ export interface EngineHandlers {
 /**
  * The harness as a child process speaking JSON lines.
  *
- * `FORGE_DOCKER=1` runs it through the repo's `forge` script instead of directly, which reuses that
- * script's mounts, uid mapping and key resolution rather than duplicating them here. The script only
+ * `FORGE_DOCKER=1` runs it through the repo's `forge-cli` script instead of directly, which reuses
+ * that script's mounts, uid mapping and key resolution rather than duplicating them here. It only
  * asks docker for a TTY when it has one, and stdio is piped here, so it does the right thing
  * unmodified.
  */
@@ -88,7 +88,7 @@ export class Engine {
     if (!existsSync(command)) {
       throw new Error(
         docker
-          ? `no forge script at ${command}`
+          ? `no forge-cli script at ${command}`
           : `no engine at ${command} — run \`npm run build:engine\``,
       );
     }
