@@ -17,6 +17,8 @@ dependencies {
     implementation(libs.guava)
     implementation("com.anthropic:anthropic-java:2.51.0")
     implementation("io.github.cdimascio:dotenv-java:3.2.0")
+    // The SDK pulls Jackson in transitively; the JSONL protocol uses it directly, so declare it.
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.19.4")
 }
 
 tasks.named<JavaExec>("run") {
