@@ -15,3 +15,7 @@ bin/
 
 # Ignore keys
 .env
+
+# TUI
+tui/dist/
+tui/node_modules/
