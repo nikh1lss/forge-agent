@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# Run the forge TUI against the current directory.
+#
+#   ~/forge-harness/forge-tui    # from any project you want forge to work on
+#
+# Needs a build first:
+#
+#   cd tui && npm install && npm run build:engine && npm run build
+#
+# Environment:
+#   FORGE_DOCKER=1      run the engine through ./forge-cli, putting the bash
+#                       tool back in a container (needs the image built)
+#
+# Anything after the script name is passed through to the TUI.
+
+set -euo pipefail
+
+# Resolve through any symlink so the entry point is found by way of this
+# script's real location. The cwd cannot be used for that: it belongs to the
+# project forge is being pointed at, which is the whole point of the script.
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+root="$(dirname "$self")"
+entry="$root/tui/dist/cli.js"
+
+if [[ ! -f $entry ]]; then
+    echo "forge-tui: no build at $entry" >&2
+    echo "           run: (cd '$root/tui' && npm install && npm run build)" >&2
+    exit 1
+fi
+
+# Invoked through node rather than executed directly: tsc emits dist/cli.js
+# without the executable bit, and re-setting it after every build is a worse
+# trade than spelling out the interpreter here.
+exec node "$entry" "$@"
