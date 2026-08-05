@@ -2,53 +2,56 @@ package ns.forge;
 
 import com.anthropic.client.AnthropicClient;
 import com.anthropic.core.RequestOptions;
+import com.anthropic.core.http.StreamResponse;
 import com.anthropic.errors.AnthropicIoException;
 import com.anthropic.errors.AnthropicServiceException;
+import com.anthropic.helpers.MessageAccumulator;
 import com.anthropic.models.messages.*;
 
 import ns.forge.tools.ForgeTool;
 import ns.forge.tools.ToolRegistry;
+import ns.forge.ui.ForgeEvent;
+import ns.forge.ui.ForgeUi;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class Harness {
-
-    // make text pretty
-    private static final String ANSI_BLUE = "\u001b[94m";
-    private static final String ANSI_YELLOW = "\u001b[93m";
-    private static final String ANSI_RESET = "\u001b[0m";
-    private static final String ANSI_GREEN = "\u001b[92m";
 
     private final AnthropicClient client;
     private final Supplier<Optional<String>> userInput;
     private final HarnessConfig config;
 
     private final ToolRegistry tools;
+    private final ForgeUi ui;
 
     public Harness(
             AnthropicClient client,
             Supplier<Optional<String>> userInput,
             HarnessConfig config,
-            ToolRegistry tools) {
+            ToolRegistry tools,
+            ForgeUi ui) {
         this.client = client;
         this.userInput = userInput;
         this.config = config;
         this.tools = tools;
+        this.ui = ui;
     }
 
     public void run() {
         Conversation conversation = new Conversation();
 
-        System.out.println("Chat with forge (<C-c> to quit)\n");
+        ui.emit(new ForgeEvent.Ready(System.getProperty("user.dir"), config.model().asString()));
 
         boolean readUser = true;
 
         while (true) {
             if (readUser) {
-                System.out.print(ANSI_BLUE + "You" + ANSI_RESET + ": ");
+                ui.emit(new ForgeEvent.AwaitingInput());
 
                 Optional<String> line = userInput.get();
                 if (line.isEmpty()) {
@@ -58,22 +61,13 @@ public final class Harness {
                 conversation.addUserText(line.get());
             }
 
+            // Text and thinking already reached the front end as deltas while this was running;
+            // the returned message is what gets appended to the history and mined for tool calls.
             Message response = runInferenceWithRetry(conversation);
             conversation.addAssistantResponse(response);
 
             List<ContentBlockParam> toolResults = new ArrayList<>();
             for (ContentBlock block : response.content()) {
-                block.text()
-                        .ifPresent(
-                                text ->
-                                        System.out.println(
-                                                ANSI_YELLOW
-                                                        + "\nForge"
-                                                        + ANSI_RESET
-                                                        + ": "
-                                                        + text.text()
-                                                        + "\n"));
-
                 block.toolUse().ifPresent(toolUse -> toolResults.add(executeTool(toolUse)));
             }
 
@@ -88,16 +82,6 @@ public final class Harness {
 
     /** Looks up and executes a tool; failures become error tool-results. */
     private ContentBlockParam executeTool(ToolUseBlock toolUse) {
-        System.out.println(
-                ANSI_GREEN
-                        + "tool"
-                        + ANSI_RESET
-                        + ": "
-                        + toolUse.name()
-                        + "("
-                        + toolUse._input()
-                        + ")");
-
         Optional<ForgeTool> tool = tools.find(toolUse.name());
 
         if (tool.isEmpty()) {
@@ -112,7 +96,9 @@ public final class Harness {
         }
     }
 
-    private static ContentBlockParam toolResult(String toolUseId, String content, boolean isError) {
+    private ContentBlockParam toolResult(String toolUseId, String content, boolean isError) {
+        ui.emit(new ForgeEvent.ToolResult(toolUseId, content, isError));
+
         return ContentBlockParam.ofToolResult(
                 ToolResultBlockParam.builder()
                         .toolUseId(toolUseId)
@@ -136,10 +122,145 @@ public final class Harness {
         return builder.build();
     }
 
+    /** What started at a given block index, so its deltas and its stop can be interpreted. */
+    private record OpenBlock(Kind kind, String toolId) {
+        enum Kind {
+            TEXT,
+            THINKING,
+            TOOL
+        }
+    }
+
+    /**
+     * Streams one response, relaying every event to the UI and accumulating the parts back into the
+     * {@link Message} the conversation needs.
+     *
+     * <p>Deltas and stops carry a block index and nothing else, so the index-to-block map built at
+     * {@code content_block_start} is what lets an {@code input_json_delta} be attributed to the
+     * call it belongs to, and a {@code content_block_stop} know whether it is ending text,
+     * thinking, or a tool call.
+     */
+    private Message streamOnce(MessageCreateParams params) {
+        MessageAccumulator accumulator = MessageAccumulator.create();
+
+        Map<Long, OpenBlock> open = new HashMap<>();
+
+        ui.emit(new ForgeEvent.TurnStart());
+
+        try (StreamResponse<RawMessageStreamEvent> stream =
+                client.messages().createStreaming(params, RequestOptions.none())) {
+
+            stream.stream()
+                    .forEach(
+                            event -> {
+                                accumulator.accumulate(event);
+                                relay(event, open);
+                            });
+        }
+
+        Message message = accumulator.message();
+
+        ui.emit(
+                new ForgeEvent.TurnEnd(
+                        message.stopReason().map(StopReason::asString).orElse("unknown"),
+                        message.usage().inputTokens(),
+                        message.usage().outputTokens()));
+
+        return message;
+    }
+
+    private void relay(RawMessageStreamEvent event, Map<Long, OpenBlock> open) {
+        event.contentBlockStart()
+                .ifPresent(
+                        start -> {
+                            RawContentBlockStartEvent.ContentBlock block = start.contentBlock();
+
+                            block.text()
+                                    .ifPresent(
+                                            ignored ->
+                                                    open.put(
+                                                            start.index(),
+                                                            new OpenBlock(
+                                                                    OpenBlock.Kind.TEXT, null)));
+
+                            block.thinking()
+                                    .ifPresent(
+                                            ignored ->
+                                                    open.put(
+                                                            start.index(),
+                                                            new OpenBlock(
+                                                                    OpenBlock.Kind.THINKING, null)));
+
+                            block.toolUse()
+                                    .ifPresent(
+                                            toolUse -> {
+                                                open.put(
+                                                        start.index(),
+                                                        new OpenBlock(
+                                                                OpenBlock.Kind.TOOL, toolUse.id()));
+                                                ui.emit(
+                                                        new ForgeEvent.ToolStart(
+                                                                toolUse.id(), toolUse.name()));
+                                            });
+                        });
+
+        event.contentBlockDelta()
+                .ifPresent(
+                        delta -> {
+                            delta.delta()
+                                    .text()
+                                    .ifPresent(
+                                            text ->
+                                                    ui.emit(
+                                                            new ForgeEvent.TextDelta(text.text())));
+
+                            delta.delta()
+                                    .thinking()
+                                    .ifPresent(
+                                            thinking ->
+                                                    ui.emit(
+                                                            new ForgeEvent.ThinkingDelta(
+                                                                    thinking.thinking())));
+
+                            delta.delta()
+                                    .inputJson()
+                                    .ifPresent(
+                                            json -> {
+                                                OpenBlock block = open.get(delta.index());
+                                                if (block != null && block.toolId() != null) {
+                                                    ui.emit(
+                                                            new ForgeEvent.ToolInputDelta(
+                                                                    block.toolId(),
+                                                                    json.partialJson()));
+                                                }
+                                            });
+                        });
+
+        // A tool call gets no "end" of its own — the result event that follows the stream closes
+        // it. Block kinds this doesn't know about (redacted thinking) were never opened, so they
+        // fall through silently.
+        event.contentBlockStop()
+                .ifPresent(
+                        stop -> {
+                            OpenBlock block = open.remove(stop.index());
+                            if (block == null) {
+                                return;
+                            }
+                            switch (block.kind()) {
+                                case TEXT -> ui.emit(new ForgeEvent.TextEnd());
+                                case THINKING -> ui.emit(new ForgeEvent.ThinkingEnd());
+                                case TOOL -> {}
+                            }
+                        });
+    }
+
     /**
      * Calls the API, retrying on transient failures (overloaded, rate limit, network errors) with
      * exponential backoff. Non-retryable errors — like an invalid API key — are rethrown
      * immediately.
+     *
+     * <p>A retry re-emits {@link ForgeEvent.TurnStart}, which is the front end's cue to throw away
+     * whatever the dead attempt had streamed so far.
      */
     private Message runInferenceWithRetry(Conversation conversation) {
         MessageCreateParams params = buildParams(conversation);
@@ -149,7 +270,7 @@ public final class Harness {
 
         for (int attempt = 0; attempt <= config.maxRetries(); ++attempt) {
             try {
-                return client.messages().create(params, RequestOptions.none());
+                return streamOnce(params);
             } catch (AnthropicServiceException e) {
                 if (!isRetryable(e.statusCode()) || attempt == config.maxRetries()) {
                     throw e;
@@ -162,7 +283,9 @@ public final class Harness {
                 }
                 last = e;
             }
-            System.out.println("retry: transient API error, waiting " + backoff + "ms...");
+            ui.emit(
+                    new ForgeEvent.Notice(
+                            "retry: transient API error, waiting " + backoff + "ms..."));
             sleep(backoff);
             backoff *= 2;
         }

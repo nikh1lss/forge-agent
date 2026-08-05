@@ -2,7 +2,7 @@
 #
 # Run forge against the current directory inside a container.
 #
-#   ./forge                 # from any project you want forge to work on
+#   ./forge-cli                 # from any project you want forge to work on
 #
 # Environment:
 #   ANTHROPIC_API_KEY   passed straight through; falls back to FORGE_ENV_FILE,
